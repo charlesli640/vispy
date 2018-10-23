@@ -33,10 +33,9 @@ attribute vec3 start;
 attribute float visible;
 varying float v_lifetime;
 void main () {
-    if (0 < age && age < lifetime) {
+    if (visible > 0 && age > 0 && age < lifetime) {
         gl_Position.xyz = start + vec3(0, -1.5*age*age, 0);
         gl_Position.w = 1.0;
-        //gl_Position.y = -1.5 * age * age;
     } else {
         // invisible
         gl_Position = vec4(-1000, -1000, 0, 0);
@@ -44,7 +43,7 @@ void main () {
         
     }
     v_lifetime = clamp((age / lifetime), 0.0, 1.0);
-    gl_PointSize = 25 + (v_lifetime * v_lifetime) * 40.0;
+    gl_PointSize = 5 + (v_lifetime * v_lifetime) * 10.0;
 }
 """
 
@@ -72,6 +71,14 @@ class Canvas(app.Canvas):
         app.Canvas.__init__(self, size=(800, 600), title='GL Fireworks',
                             keys='interactive')
 
+    def on_key_press(self, event):
+        modifiers = [key.name for key in event.modifiers]
+        print('Key pressed - text: %r, key: %s, modifiers: %r' % (
+            event.text, event.key.name, modifiers))
+        if event.key.name == 'Space':
+            self.on = not self.on
+        print("self.on={}".format(self.on))
+
     def on_initialize(self, event):
         # Build & activate program
         self.program = gl.glCreateProgram()
@@ -90,6 +97,7 @@ class Canvas(app.Canvas):
 
         # Build vertex buffer
         n = 100
+        self.on = True
         self.data = np.zeros(n, dtype=[('lifetime', np.float32, 1),
                                        ('age',    np.float32, 1),
                                        ('start',    np.float32, 3),
@@ -144,7 +152,19 @@ class Canvas(app.Canvas):
 
         n = len(self.data)
         self.elapsed_time = 1. / 30.
+        oldage = np.copy(self.data["age"])
         self.data["age"] += self.elapsed_time
+
+        index = np.where(np.logical_or(
+                    np.logical_and(self.data['age']>0, oldage<0), 
+                    self.data['age']>self.data['lifetime']))   # current_age>0 && (old_age<0) || (current_age>lifetime)
+        if self.on:
+            np.put(self.data['visible'], index, 1)
+        else:
+            np.put(self.data['visible'], index, 0)
+        #print("self.on={}".format(self.on))
+        #print(index)
+        #print(self.data['visible'])
         self.data["age"] %= self.data["lifetime"]
         #print(np.ndarray.sum(self.data["start"]))
         
@@ -168,7 +188,7 @@ class Canvas(app.Canvas):
         self.data['lifetime'] = np.random.normal(1.0, 0.005, (n,))
         self.data["age"] = np.random.normal(0, 0.002, (n,)) + np.arange(-n, 0)*1./90
         self.data['start'] = np.random.normal(0.0, 0.002, (n, 3))
-        self.data['visible'][:] = 0. #np.random.normal(0.0, 0.002, (n, 3))
+        self.data['visible'][:] = 1 #np.random.normal(0.0, 0.002, (n, 3))
         #self.data['end'][:,1] -= 1 #np.random.normal(0.0, .002, (n, 3))
         gl.glBufferData(gl.GL_ARRAY_BUFFER, self.data, gl.GL_DYNAMIC_DRAW)
 
@@ -176,4 +196,5 @@ if __name__ == '__main__':
     c = Canvas()
     #c.measure_fps()
     c.show()
+    #app.set_interactive()
     app.run()
