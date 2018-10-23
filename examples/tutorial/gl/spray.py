@@ -25,17 +25,16 @@ from vispy.gloo import gl
 
 vertex_code = """
 #version 120
-//uniform int spouting;
 uniform float time;
 uniform vec3 center;
 attribute float lifetime;
 attribute float age;
 attribute vec3 start;
-attribute vec3 end;
+attribute float visible;
 varying float v_lifetime;
 void main () {
     if (0 < age && age < lifetime) {
-        gl_Position.xyz = vec3(0, -1.5*age*age, 0); //(time * end) + center;
+        gl_Position.xyz = start + vec3(0, -1.5*age*age, 0);
         gl_Position.w = 1.0;
         //gl_Position.y = -1.5 * age * age;
     } else {
@@ -94,7 +93,7 @@ class Canvas(app.Canvas):
         self.data = np.zeros(n, dtype=[('lifetime', np.float32, 1),
                                        ('age',    np.float32, 1),
                                        ('start',    np.float32, 3),
-                                       ('end',      np.float32, 3)])
+                                       ('visible',      np.float32, 1)])
         vbuffer = gl.glCreateBuffer()
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbuffer)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, self.data, gl.GL_DYNAMIC_DRAW)
@@ -107,18 +106,18 @@ class Canvas(app.Canvas):
         gl.glEnableVertexAttribArray(loc)
         gl.glVertexAttribPointer(loc, 1, gl.GL_FLOAT, False, stride, offset)
 
-        offset = self.data.dtype["lifetime"].itemsize
+        offset += self.data.dtype["lifetime"].itemsize
         loc = gl.glGetAttribLocation(self.program, "age")
         gl.glEnableVertexAttribArray(loc)
         gl.glVertexAttribPointer(loc, 1, gl.GL_FLOAT, False, stride, offset)
         
-        offset = self.data.dtype["age"].itemsize
+        offset += self.data.dtype["age"].itemsize
         loc = gl.glGetAttribLocation(self.program, "start")
         gl.glEnableVertexAttribArray(loc)
         gl.glVertexAttribPointer(loc, 3, gl.GL_FLOAT, False, stride, offset)
 
-        offset = self.data.dtype["start"].itemsize
-        loc = gl.glGetAttribLocation(self.program, "end")
+        offset += self.data.dtype["start"].itemsize
+        loc = gl.glGetAttribLocation(self.program, "visible")
         gl.glEnableVertexAttribArray(loc)
         gl.glVertexAttribPointer(loc, 3, gl.GL_FLOAT, False, stride, offset)
 
@@ -169,8 +168,8 @@ class Canvas(app.Canvas):
         self.data['lifetime'] = np.random.normal(1.0, 0.005, (n,))
         self.data["age"] = np.random.normal(0, 0.002, (n,)) + np.arange(-n, 0)*1./90
         self.data['start'] = np.random.normal(0.0, 0.002, (n, 3))
-        self.data['end'] = np.random.normal(0.0, 0.002, (n, 3))
-        self.data['end'][:,1] -= 1 #np.random.normal(0.0, .002, (n, 3))
+        self.data['visible'][:] = 0. #np.random.normal(0.0, 0.002, (n, 3))
+        #self.data['end'][:,1] -= 1 #np.random.normal(0.0, .002, (n, 3))
         gl.glBufferData(gl.GL_ARRAY_BUFFER, self.data, gl.GL_DYNAMIC_DRAW)
 
 if __name__ == '__main__':
