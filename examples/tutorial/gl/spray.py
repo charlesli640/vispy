@@ -119,7 +119,7 @@ class Canvas(app.Canvas):
         offset += self.data.dtype["start"].itemsize
         loc = gl.glGetAttribLocation(self.program, "visible")
         gl.glEnableVertexAttribArray(loc)
-        gl.glVertexAttribPointer(loc, 3, gl.GL_FLOAT, False, stride, offset)
+        gl.glVertexAttribPointer(loc, 1, gl.GL_FLOAT, False, stride, offset)
 
         # OpenGL initalization
         self.elapsed_time = 0
