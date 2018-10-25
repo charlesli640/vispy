@@ -19,6 +19,7 @@ calculated, such that each explostion is unique.
 """
 import numpy as np
 import time
+import vispy
 from vispy import app
 from vispy.gloo import gl
 
@@ -37,11 +38,10 @@ void main () {
     } else {
         // far far away, invisible
         gl_Position = vec4(-1000, -1000, 0, 0);
-        //gl_Position = start;
 
     }
     v_lifetime = clamp((age / lifetime), 0.0, 1.0);
-    gl_PointSize = 9 + (v_lifetime * v_lifetime) * 10.0;
+    gl_PointSize = 4 + v_lifetime * 18.0;
 }
 """
 
@@ -56,8 +56,8 @@ void main()
     //gl_FragColor = d*color;
     //gl_FragColor.a = d;
     //gl_FragColor.a *= v_lifetime;
-    float d1 = (length(gl_PointCoord.xy - vec2(0.5,0.15)));
-    float d2 = (length(gl_PointCoord.xy - vec2(0.5,0.85)));
+    float d1 = (length(gl_PointCoord.xy - vec2(0.5,0.05)));
+    float d2 = (length(gl_PointCoord.xy - vec2(0.5,0.95)));
     float d = d1+d2;
     gl_FragColor = vec4(color.rgb, 3.*color.a*(1-d));
 }
@@ -179,14 +179,17 @@ class Canvas(app.Canvas):
     def new_explosion(self):
         n = self.n
         p = self.p
+        if n<=0 or p<=0:
+            return
         color = np.ones(4) #np.random.uniform(0.1, 0.9, 4).astype(np.float32)
         color[3] = 1.0 #/ n ** 0.08
         loc = gl.glGetUniformLocation(self.program, "color")
         gl.glUniform4f(loc, *color)
 
-        self.data['lifetime'] = np.random.normal(1.0, 0.005, (n*p,))
-        self.data["age"] = np.repeat(np.arange(-n, 0)*1./90, p) + np.random.normal(0, 0.2, (n*p,))
-        self.data['start'] = np.random.normal(0.0, 0.002, (n*p, 3))
+        self.data['lifetime'] = np.random.normal(1.0, 0.0002, (n*p,))
+        self.data["age"] = np.repeat(np.arange(-n, 0)*1./n, p) + np.random.normal(0, 0.001, (n*p,))
+        self.data['start'] = np.random.normal(0.0, 0.001, (n*p, 3))
+        #self.data['start'] = np.random.uniform(0.0, 0.001, (n*p, 3))
         self.data['start'][:,0] += np.resize(np.linspace(-1.5, 1.5, p), p * n)
         self.data['visible'][:] = 1 #np.random.normal(0.0, 0.002, (n, 3))
         gl.glBufferData(gl.GL_ARRAY_BUFFER, self.data, gl.GL_DYNAMIC_DRAW)
@@ -195,5 +198,6 @@ if __name__ == '__main__':
     c = Canvas()
     c.measure_fps()
     c.show()
+    print(vispy.sys_info())
     #app.set_interactive()
     app.run()
