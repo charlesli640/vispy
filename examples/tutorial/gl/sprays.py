@@ -41,7 +41,7 @@ void main () {
 
     }
     v_lifetime = clamp((age / lifetime), 0.0, 1.0);
-    gl_PointSize = 4 + v_lifetime * 18.0;
+    gl_PointSize = 6 + v_lifetime * 24.0;
 }
 """
 
@@ -59,7 +59,7 @@ void main()
     float d1 = (length(gl_PointCoord.xy - vec2(0.5,0.05)));
     float d2 = (length(gl_PointCoord.xy - vec2(0.5,0.95)));
     float d = d1+d2;
-    gl_FragColor = vec4(color.rgb, 3.*color.a*(1-d));
+    gl_FragColor = vec4(color.rgb, 9.*color.a*(1-d));
 }
 """
 
@@ -74,8 +74,19 @@ class Canvas(app.Canvas):
         print('Key pressed - text: %r, key: %s, modifiers: %r' % (
             event.text, event.key.name, modifiers))
         if event.key.name == 'Space':
-            self.on = not self.on
-        #print("self.on={}".format(self.on))
+            self.on = 255 - self.on
+        if event.key.name == '1':
+            self.on[0:100] = 255 - self.on[0:100]
+            print(self.on)
+        if event.key.name == '2':
+            self.on[100:200] = 255 - self.on[100:200]
+            print(self.on)
+        if event.key.name == '3':
+            self.on[200:300] = 255 - self.on[200:300]
+            print(self.on)
+        if event.key.name == '4':
+            self.on[300:400] = 255 - self.on[300:400]
+            print(self.on)
 
     def on_initialize(self, event):
         # Build & activate program
@@ -96,7 +107,7 @@ class Canvas(app.Canvas):
         # Build vertex buffer
         self.n = 120 # particals in each spay
         self.p = 400 # the number of spays
-        self.on = True #np.zeros(p, dtype=np.ubyte)
+        self.on = np.zeros(self.p, dtype=np.ubyte)
         self.data = np.zeros(self.n * self.p, dtype=[('lifetime', np.float32, 1),
                                        ('age',    np.float32, 1),
                                        ('start',    np.float32, 3),
@@ -155,18 +166,20 @@ class Canvas(app.Canvas):
             return
 
         n = self.n
+        p = self.p
         elapsed_time = now - self.last_time
         self.last_time = now
         oldage = np.copy(self.data["age"])
         self.data["age"] += elapsed_time
 
-        index = np.where(np.logical_or(
-                    np.logical_and(self.data['age']>0, oldage<0),
-                    self.data['age']>self.data['lifetime']))   # current_age>0 && (old_age<0) || (current_age>lifetime)
-        if self.on:
-            np.put(self.data['visible'], index, 1)
-        else:
-            np.put(self.data['visible'], index, 0)
+        onoff = np.resize(self.on, p*n)
+
+        newborn = np.logical_or( np.logical_and(self.data['age']>0, oldage<0),
+                            self.data['age']>self.data['lifetime'])   # current_age>0 && (old_age<0) || (current_age>lifetime)
+        indexon = np.where(np.logical_and(newborn, onoff>=128))
+        indexoff = np.where(np.logical_and(newborn, onoff<127))
+        np.put(self.data['visible'], indexon, 1)
+        np.put(self.data['visible'], indexoff, 0)
         self.data["age"] %= self.data["lifetime"]
         #print(np.ndarray.sum(self.data["start"]))
 
@@ -187,8 +200,9 @@ class Canvas(app.Canvas):
         gl.glUniform4f(loc, *color)
 
         self.data['lifetime'] = np.random.normal(1.0, 0.0002, (n*p,))
-        self.data["age"] = np.repeat(np.arange(-n, 0)*1./n, p) + np.random.normal(0, 0.001, (n*p,))
+        self.data["age"] = np.repeat(np.arange(-n, 0)*1./n, p) + np.random.normal(0, 0.0000001, (n*p,))
         self.data['start'] = np.random.normal(0.0, 0.001, (n*p, 3))
+        self.data['start'][:,1] = 0
         #self.data['start'] = np.random.uniform(0.0, 0.001, (n*p, 3))
         self.data['start'][:,0] += np.resize(np.linspace(-1.5, 1.5, p), p * n)
         self.data['visible'][:] = 1 #np.random.normal(0.0, 0.002, (n, 3))
@@ -196,7 +210,7 @@ class Canvas(app.Canvas):
 
 if __name__ == '__main__':
     c = Canvas()
-    c.measure_fps()
+    #c.measure_fps()
     c.show()
     print(vispy.sys_info())
     #app.set_interactive()
